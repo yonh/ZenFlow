@@ -1,0 +1,7 @@
+{
+  "name": "ZenFlow: AI Meditation & Speech Guide",
+  "description": "A high-performance meditation guide generator that creates custom scripts and realistic voice narration using Gemini's advanced models.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
