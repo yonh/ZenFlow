@@ -23,7 +23,10 @@ import {
   Mic,
   MicOff,
   X,
-  MessageSquare
+  MessageSquare,
+  Waves,
+  Music,
+  Sliders
 } from 'lucide-react';
 import { 
   MeditationGuide, 
@@ -31,12 +34,16 @@ import {
   GuideStatus, 
   AudioMetadata,
   AppSettings,
-  Language
+  Language,
+  OFFICIAL_VOICES,
+  VoiceOption,
+  SpeechParams
 } from './types';
 import { 
   generateMeditationText, 
   generateMeditationSpeech, 
   connectToLiveAssistant, 
+  connectToLiveMeditation,
   decode, 
   encode, 
   decodeAudioData 
@@ -98,7 +105,7 @@ const translations = {
     generateTitle: '定制您的冥想引导',
     generateSubtitle: '根据您的心情、时长和风格量身打造。',
     topicLabel: '冥想主题或关注点',
-    topicPlaceholder: '例如：工作后的减压、晨间感恩...',
+    topicPlaceholder: '例如：在一个宁静的海滩边，听着海浪声...',
     styleLabel: '引导风格',
     durationLabel: '预计时长 (分钟)',
     languageLabel: '输出语言',
@@ -108,35 +115,44 @@ const translations = {
     noHistory: '暂无历史记录',
     startGenerating: '立即开始生成',
     backToHistory: '返回列表',
-    voiceGenTitle: '语音合成',
-    voiceGenSubtitle: '将冥想稿转为舒缓的语音导引。',
-    convertToAudio: '生成语音',
-    synthesizing: '正在合成语音...',
+    voiceGenTitle: '音色与表现力',
+    voiceGenSubtitle: '选择音色并微调语速和音调，打造完美体验。',
+    convertToAudio: '开始合成',
+    synthesizing: '正在合成...',
     downloadRecording: '下载音频',
-    generateAnother: '生成其他音色',
+    generateAnother: '换个音色',
     practiceTip: '练习小贴士',
-    tipContent: '为了获得最佳效果，请找一个安静的空间，佩戴舒适的耳机，并专注于句子之间的停顿。',
+    tipContent: '为了获得最佳效果，请找一个安静的空间，佩戴舒适的耳机。',
     settingsTitle: '偏好设置',
     appLanguage: '界面语言',
     apiEndpoint: 'API 接口地址',
-    apiEndpointDesc: '支持 OpenAI 兼容的转发地址 (例如: https://api.proxy.com/v1)',
+    apiEndpointDesc: '支持 OpenAI 兼容的转发地址',
     saveSettings: '保存设置',
     settingsSaved: '设置已更新',
     deleteConfirm: '确定要删除这条冥想记录吗？',
-    errorGen: '生成失败，请检查网络或配置。',
+    errorGen: '生成失败，请检查网络。',
     errorTts: '合成失败，请重试。',
-    magicTopic: '智能生成主题',
+    magicTopic: '智能生成',
     templates: '示例模板',
     custom: '自定义',
     preset: '预设',
-    voiceAssistant: '语音对话构思',
+    voiceAssistant: '语音构思',
     vaTitle: '冥想助手',
     vaSubtitle: '与 AI 对话，共同构思最适合您的冥想方案。',
     vaListening: '正在倾听...',
     vaSpeaking: '正在为您规划...',
     vaDone: '规划完成',
-    vaError: '语音连接失败，请重试',
+    vaError: '连接失败',
     usePlan: '采用此方案',
+    startLiveSession: '实时引导',
+    liveSessionTitle: '实时冥想中',
+    liveSessionDesc: '闭上双眼，跟随引导者的声音。',
+    endSession: '结束引导',
+    selectVoice: '选择音色',
+    testPlay: '试听',
+    testing: '试听中...',
+    speakingRate: '语速 (Speed)',
+    pitch: '音调 (Pitch)',
     styles: {
       [MeditationStyle.CALM]: '平静 (Calm)',
       [MeditationStyle.ENERGIZING]: '活力 (Energizing)',
@@ -154,45 +170,54 @@ const translations = {
     generateTitle: 'Create Your Guided Meditation',
     generateSubtitle: 'Tailor your session\'s theme, duration, and energy.',
     topicLabel: 'Topic or Focus',
-    topicPlaceholder: 'e.g., Stress relief after work, Morning gratitude...',
+    topicPlaceholder: 'e.g., Stress relief after work...',
     styleLabel: 'Style',
     durationLabel: 'Duration (mins)',
     languageLabel: 'Language',
     generateBtn: 'Generate Script',
-    generating: 'Drafting your guide...',
+    generating: 'Drafting...',
     searchPlaceholder: 'Search history...',
     noHistory: 'No history found',
     startGenerating: 'Generate Now',
     backToHistory: 'Back to History',
-    voiceGenTitle: 'Voice Generation',
-    voiceGenSubtitle: 'Generate a soothing voice recording of this script.',
-    convertToAudio: 'Convert to Audio',
+    voiceGenTitle: 'Voice & Expression',
+    voiceGenSubtitle: 'Select voice and fine-tune rate/pitch for the perfect vibe.',
+    convertToAudio: 'Synthesize',
     synthesizing: 'Synthesizing...',
-    downloadRecording: 'Download Recording',
-    generateAnother: 'Generate Another Voice',
+    downloadRecording: 'Download',
+    generateAnother: 'New Voice',
     practiceTip: 'Practice Tip',
-    tipContent: 'For best results, find a quiet space, use comfortable headphones, and focus on the gaps between the sentences.',
+    tipContent: 'For best results, find a quiet space and use headphones.',
     settingsTitle: 'Preferences',
-    appLanguage: 'Display Language',
+    appLanguage: 'Language',
     apiEndpoint: 'API Base URL',
-    apiEndpointDesc: 'Supports OpenAI compatible proxy endpoints (e.g., https://api.proxy.com/v1)',
-    saveSettings: 'Save Preferences',
+    apiEndpointDesc: 'Supports OpenAI compatible proxy endpoints',
+    saveSettings: 'Save',
     settingsSaved: 'Settings saved',
-    deleteConfirm: 'Are you sure you want to delete this record?',
-    errorGen: 'Generation failed. Check configuration.',
-    errorTts: 'TTS failed. Try again.',
-    magicTopic: 'AI Suggest Topic',
+    deleteConfirm: 'Delete this record?',
+    errorGen: 'Generation failed.',
+    errorTts: 'TTS failed.',
+    magicTopic: 'AI Suggest',
     templates: 'Templates',
     custom: 'Custom',
     preset: 'PRESET',
     voiceAssistant: 'Voice Assistant',
     vaTitle: 'Meditation Assistant',
-    vaSubtitle: 'Talk to AI to co-create your perfect meditation plan.',
+    vaSubtitle: 'Talk to AI to co-create your perfect plan.',
     vaListening: 'Listening...',
     vaSpeaking: 'Thinking...',
     vaDone: 'Plan Ready',
-    vaError: 'Voice connection failed',
+    vaError: 'Connection failed',
     usePlan: 'Use This Plan',
+    startLiveSession: 'Start Live',
+    liveSessionTitle: 'Live Meditation',
+    liveSessionDesc: 'Follow the guide\'s voice.',
+    endSession: 'End Session',
+    selectVoice: 'Select Voice',
+    testPlay: 'Test',
+    testing: 'Testing...',
+    speakingRate: 'Speaking Rate',
+    pitch: 'Pitch',
     styles: {
       [MeditationStyle.CALM]: 'Calm',
       [MeditationStyle.ENERGIZING]: 'Energizing',
@@ -211,10 +236,17 @@ export default function App() {
   const [selectedGuideId, setSelectedGuideId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [testingVoiceId, setTestingVoiceId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showTemplates, setShowTemplates] = useState(false);
   const [showVoiceAssistant, setShowVoiceAssistant] = useState(false);
+  const [showLiveSession, setShowLiveSession] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState<VoiceOption>(OFFICIAL_VOICES[0]);
   
+  // Speech Parameters State
+  const [speakingRate, setSpeakingRate] = useState(0.9);
+  const [pitch, setPitch] = useState(0.0);
+
   // Settings & i18n
   const [settings, setSettingsState] = useState<AppSettings>(getSettings());
   const t = (key: keyof typeof translations.zh) => translations[settings.language][key];
@@ -226,7 +258,7 @@ export default function App() {
   const [isCustomDuration, setIsCustomDuration] = useState(true);
   const [targetLang, setTargetLang] = useState(settings.language === 'zh' ? 'Chinese' : 'English');
 
-  // Voice Assistant State
+  // Voice Assistant / Live Session State
   const [vaStatus, setVaStatus] = useState<'idle' | 'connecting' | 'listening' | 'speaking' | 'done' | 'error'>('idle');
   const [vaTranscription, setVaTranscription] = useState('');
   const [vaModelTurn, setVaModelTurn] = useState('');
@@ -244,6 +276,7 @@ export default function App() {
     setGuides(getGuides());
     return () => {
       stopVoiceAssistant();
+      stopLiveSession();
     };
   }, []);
 
@@ -287,15 +320,16 @@ export default function App() {
   const handleSynthesize = async (guide: MeditationGuide) => {
     setIsSynthesizing(true);
     try {
-      const { blob, duration: audioDuration } = await generateMeditationSpeech(guide.content);
+      const { blob, duration: audioDuration } = await generateMeditationSpeech(guide.content, selectedVoice.id, { speakingRate, pitch });
       const url = URL.createObjectURL(blob);
       const newAudio: AudioMetadata = {
         id: crypto.randomUUID(),
         url,
-        voiceId: 'Kore',
+        voiceId: selectedVoice.id,
         format: 'wav',
         duration: audioDuration,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        params: { speakingRate, pitch }
       };
       
       const updatedGuide = {
@@ -308,6 +342,20 @@ export default function App() {
       alert(t('errorTts'));
     } finally {
       setIsSynthesizing(false);
+    }
+  };
+
+  const handleTestVoice = async (voiceId: string) => {
+    setTestingVoiceId(voiceId);
+    try {
+      const testText = settings.language === 'zh' ? '你好，我是你的冥想导引助手。' : 'Hello, I am your meditation guide.';
+      const { blob } = await generateMeditationSpeech(testText, voiceId, { speakingRate, pitch });
+      const audio = new Audio(URL.createObjectURL(blob));
+      audio.play();
+      audio.onended = () => setTestingVoiceId(null);
+    } catch (error) {
+      alert(t('errorTts'));
+      setTestingVoiceId(null);
     }
   };
 
@@ -325,12 +373,10 @@ export default function App() {
     }
   };
 
-  // --- Voice Assistant Logic ---
+  // --- Voice Assistant / Live Logic ---
 
-  const startVoiceAssistant = async () => {
-    setShowVoiceAssistant(true);
+  const initAudioAndConnect = async (connectFn: any) => {
     setVaStatus('connecting');
-    setPlannedTopic(null);
     setVaTranscription('');
     setVaModelTurn('');
 
@@ -343,7 +389,7 @@ export default function App() {
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      sessionPromiseRef.current = connectToLiveAssistant({
+      sessionPromiseRef.current = connectFn({
         onOpen: () => {
           setVaStatus('listening');
           const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
@@ -355,7 +401,6 @@ export default function App() {
             for (let i = 0; i < l; i++) {
               int16[i] = inputData[i] * 32768;
             }
-            // Use GenAIBlob to avoid conflict with browser's global Blob type
             const pcmBlob: GenAIBlob = {
               data: encode(new Uint8Array(int16.buffer)),
               mimeType: 'audio/pcm;rate=16000',
@@ -367,8 +412,9 @@ export default function App() {
           source.connect(scriptProcessor);
           scriptProcessor.connect(inputAudioContextRef.current!.destination);
         },
-        onMessage: async (message) => {
+        onMessage: async (message: any) => {
           if (message.serverContent?.modelTurn?.parts[0]?.inlineData?.data) {
+            setVaStatus('speaking');
             const base64 = message.serverContent.modelTurn.parts[0].inlineData.data;
             const audioCtx = outputAudioContextRef.current!;
             nextStartTimeRef.current = Math.max(nextStartTimeRef.current, audioCtx.currentTime);
@@ -379,13 +425,17 @@ export default function App() {
             source.start(nextStartTimeRef.current);
             nextStartTimeRef.current += audioBuffer.duration;
             sourcesRef.current.add(source);
-            source.onended = () => sourcesRef.current.delete(source);
+            source.onended = () => {
+              sourcesRef.current.delete(source);
+              if (sourcesRef.current.size === 0) setVaStatus('listening');
+            };
           }
 
           if (message.serverContent?.interrupted) {
             sourcesRef.current.forEach(s => s.stop());
             sourcesRef.current.clear();
             nextStartTimeRef.current = 0;
+            setVaStatus('listening');
           }
 
           if (message.serverContent?.inputTranscription) {
@@ -405,7 +455,7 @@ export default function App() {
                     functionResponses: [{
                       id: fc.id,
                       name: fc.name,
-                      response: { result: 'Topic saved. You can now tell the user the plan is ready.' }
+                      response: { result: 'Topic saved.' }
                     }]
                   });
                 });
@@ -413,27 +463,37 @@ export default function App() {
             }
           }
         },
-        onClose: () => {
-          setVaStatus('idle');
-        },
-        onError: (e) => {
-          console.error('VA Error:', e);
-          setVaStatus('error');
-        }
+        onClose: () => setVaStatus('idle'),
+        onError: () => setVaStatus('error')
       });
     } catch (err) {
-      console.error('Failed to start VA:', err);
       setVaStatus('error');
     }
   };
 
+  const startVoiceAssistant = () => {
+    setShowVoiceAssistant(true);
+    initAudioAndConnect(connectToLiveAssistant);
+  };
+
   const stopVoiceAssistant = () => {
-    if (sessionPromiseRef.current) {
-      sessionPromiseRef.current.then((s: any) => s.close());
-    }
+    if (sessionPromiseRef.current) sessionPromiseRef.current.then((s: any) => s.close());
     inputAudioContextRef.current?.close();
     outputAudioContextRef.current?.close();
     setShowVoiceAssistant(false);
+    setVaStatus('idle');
+  };
+
+  const startLiveSession = (guide: MeditationGuide) => {
+    setShowLiveSession(true);
+    initAudioAndConnect((callbacks: any) => connectToLiveMeditation(guide.content, callbacks));
+  };
+
+  const stopLiveSession = () => {
+    if (sessionPromiseRef.current) sessionPromiseRef.current.then((s: any) => s.close());
+    inputAudioContextRef.current?.close();
+    outputAudioContextRef.current?.close();
+    setShowLiveSession(false);
     setVaStatus('idle');
   };
 
@@ -466,33 +526,13 @@ export default function App() {
         </div>
 
         <nav className="flex-1 space-y-2">
-          <SidebarItem 
-            icon={<Plus className="w-5 h-5" />} 
-            label={t('createNew')} 
-            active={activeTab === 'generate'} 
-            onClick={() => { setActiveTab('generate'); setSelectedGuideId(null); }}
-          />
-          <SidebarItem 
-            icon={<History className="w-5 h-5" />} 
-            label={t('history')} 
-            active={activeTab === 'history'} 
-            onClick={() => { setActiveTab('history'); setSelectedGuideId(null); }}
-          />
-          <SidebarItem 
-            icon={<Volume2 className="w-5 h-5" />} 
-            label={t('audioLibrary')} 
-            active={activeTab === 'audio'} 
-            onClick={() => setActiveTab('audio')}
-          />
+          <SidebarItem icon={<Plus className="w-5 h-5" />} label={t('createNew')} active={activeTab === 'generate'} onClick={() => { setActiveTab('generate'); setSelectedGuideId(null); }} />
+          <SidebarItem icon={<History className="w-5 h-5" />} label={t('history')} active={activeTab === 'history'} onClick={() => { setActiveTab('history'); setSelectedGuideId(null); }} />
+          <SidebarItem icon={<Volume2 className="w-5 h-5" />} label={t('audioLibrary')} active={activeTab === 'audio'} onClick={() => setActiveTab('audio')} />
         </nav>
 
         <div className="mt-auto pt-6 border-t border-slate-100">
-          <SidebarItem 
-            icon={<SettingsIcon className="w-5 h-5" />} 
-            label={t('settings')} 
-            active={activeTab === 'settings'}
-            onClick={() => setActiveTab('settings')}
-          />
+          <SidebarItem icon={<SettingsIcon className="w-5 h-5" />} label={t('settings')} active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
         </div>
       </aside>
 
@@ -509,55 +549,19 @@ export default function App() {
                 </div>
                 <h2 className="text-3xl font-bold font-accent">{t('settingsTitle')}</h2>
               </div>
-
               <form onSubmit={handleSaveSettings} className="bg-white rounded-[40px] p-10 shadow-xl shadow-slate-200/50 border border-slate-100 space-y-10">
                 <div className="space-y-6">
-                  <div className="flex items-center space-x-3 text-slate-800 font-bold">
-                    <Languages className="w-5 h-5 text-indigo-500" />
-                    <span>{t('appLanguage')}</span>
-                  </div>
+                  <div className="flex items-center space-x-3 text-slate-800 font-bold"><Languages className="w-5 h-5 text-indigo-500" /><span>{t('appLanguage')}</span></div>
                   <div className="flex p-1 bg-slate-50 rounded-2xl border border-slate-100">
-                    <button 
-                      type="button"
-                      onClick={() => setSettingsState({...settings, language: 'zh'})}
-                      className={`flex-1 py-3 px-4 rounded-xl transition-all font-semibold ${settings.language === 'zh' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                      中文 (简体)
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setSettingsState({...settings, language: 'en'})}
-                      className={`flex-1 py-3 px-4 rounded-xl transition-all font-semibold ${settings.language === 'en' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                      English
-                    </button>
+                    <button type="button" onClick={() => setSettingsState({...settings, language: 'zh'})} className={`flex-1 py-3 px-4 rounded-xl transition-all font-semibold ${settings.language === 'zh' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}>中文</button>
+                    <button type="button" onClick={() => setSettingsState({...settings, language: 'en'})} className={`flex-1 py-3 px-4 rounded-xl transition-all font-semibold ${settings.language === 'en' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}>English</button>
                   </div>
                 </div>
-
                 <div className="space-y-6">
-                  <div className="flex items-center space-x-3 text-slate-800 font-bold">
-                    <Globe className="w-5 h-5 text-indigo-500" />
-                    <span>{t('apiEndpoint')}</span>
-                  </div>
-                  <div className="space-y-3">
-                    <p className="text-sm text-slate-400 font-medium">{t('apiEndpointDesc')}</p>
-                    <input 
-                      type="url" 
-                      value={settings.baseUrl}
-                      onChange={(e) => setSettingsState({...settings, baseUrl: e.target.value})}
-                      placeholder="https://api.openai-proxy.com/v1"
-                      className={darkInputClasses}
-                    />
-                  </div>
+                  <div className="flex items-center space-x-3 text-slate-800 font-bold"><Globe className="w-5 h-5 text-indigo-500" /><span>{t('apiEndpoint')}</span></div>
+                  <input type="url" value={settings.baseUrl} onChange={(e) => setSettingsState({...settings, baseUrl: e.target.value})} placeholder="https://api.openai-proxy.com/v1" className={darkInputClasses} />
                 </div>
-
-                <button 
-                  type="submit"
-                  className="w-full py-4 bg-indigo-600 text-white rounded-[24px] font-bold text-lg hover:bg-indigo-700 transition-all flex items-center justify-center space-x-2 shadow-lg shadow-indigo-100"
-                >
-                  <Save className="w-5 h-5" />
-                  <span>{t('saveSettings')}</span>
-                </button>
+                <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-[24px] font-bold text-lg hover:bg-indigo-700 shadow-lg shadow-indigo-100 flex items-center justify-center space-x-2"><Save className="w-5 h-5" /><span>{t('saveSettings')}</span></button>
               </form>
             </div>
           )}
@@ -581,13 +585,7 @@ export default function App() {
                       <button type="button" onClick={startVoiceAssistant} className="flex items-center space-x-1 text-xs font-bold text-violet-600 bg-violet-50 px-3 py-1.5 rounded-full hover:bg-violet-100 transition-colors"><Mic className="w-3 h-3" /><span>{t('voiceAssistant')}</span></button>
                     </div>
                   </div>
-                  <textarea 
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    placeholder={t('topicPlaceholder')}
-                    rows={2}
-                    className={`${darkInputClasses} resize-none`}
-                  />
+                  <textarea value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={t('topicPlaceholder')} rows={2} className={`${darkInputClasses} resize-none`} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -595,92 +593,91 @@ export default function App() {
                   <div className="space-y-4">
                     <label className="text-base font-bold text-slate-800">{t('styleLabel')}</label>
                     <div className="relative group">
-                      <select 
-                        value={style}
-                        onChange={(e) => setStyle(e.target.value as MeditationStyle)}
-                        className={`${darkInputClasses} appearance-none cursor-pointer pr-12 focus:ring-2 focus:ring-indigo-400`}
-                        style={{ colorScheme: 'dark' }}
-                      >
-                        {Object.values(MeditationStyle).map(s => (
-                          <option key={s} value={s} className="bg-[#333333] text-white py-2">
-                            {(translations[settings.language] as any).styles[s]}
-                          </option>
-                        ))}
+                      <select value={style} onChange={(e) => setStyle(e.target.value as MeditationStyle)} className={`${darkInputClasses} appearance-none cursor-pointer pr-12 focus:ring-2 focus:ring-indigo-400`} style={{ colorScheme: 'dark' }}>
+                        {Object.values(MeditationStyle).map(s => (<option key={s} value={s} className="bg-[#333333] text-white py-2">{(translations[settings.language] as any).styles[s]}</option>))}
                       </select>
                       <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none w-6 h-6 group-hover:text-white transition-colors" />
                     </div>
                   </div>
-
                   {/* Duration Input */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <label className="text-base font-bold text-slate-800">{t('durationLabel')}</label>
-                      <button 
-                        type="button"
-                        onClick={() => setIsCustomDuration(!isCustomDuration)}
-                        className="text-[11px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700 transition-colors"
-                      >
-                        {isCustomDuration ? t('preset') : t('custom')}
-                      </button>
+                      <button type="button" onClick={() => setIsCustomDuration(!isCustomDuration)} className="text-[11px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700">{isCustomDuration ? t('preset') : t('custom')}</button>
                     </div>
-                    {isCustomDuration ? (
-                      <input 
-                        type="number" 
-                        min="1" 
-                        max="120"
-                        value={duration}
-                        onChange={(e) => setDuration(parseInt(e.target.value) || 0)}
-                        className={darkInputClasses}
-                      />
-                    ) : (
+                    {isCustomDuration ? (<input type="number" min="1" max="120" value={duration} onChange={(e) => setDuration(parseInt(e.target.value) || 0)} className={darkInputClasses} />) : (
                       <div className="grid grid-cols-4 gap-3 h-[68px]">
                         {[5, 10, 15, 20].map(val => (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => setDuration(val)}
-                            className={`rounded-[20px] border-2 transition-all font-bold text-lg ${duration === val ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-[#333333] text-slate-400 border-transparent hover:border-slate-500'}`}
-                          >
-                            {val}
-                          </button>
+                          <button key={val} type="button" onClick={() => setDuration(val)} className={`rounded-[20px] border-2 transition-all font-bold text-lg ${duration === val ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-[#333333] text-slate-400 border-transparent hover:border-slate-500'}`}>{val}</button>
                         ))}
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Language Select */}
-                <div className="space-y-4">
-                  <label className="text-base font-bold text-slate-800">{t('languageLabel')}</label>
-                  <div className="relative group">
-                    <select 
-                      value={targetLang}
-                      onChange={(e) => setTargetLang(e.target.value)}
-                      className={`${darkInputClasses} appearance-none cursor-pointer pr-12 focus:ring-2 focus:ring-indigo-400`}
-                      style={{ colorScheme: 'dark' }}
-                    >
-                      <option value="Chinese" className="bg-[#333333] text-white">中文 (Chinese)</option>
-                      <option value="English" className="bg-[#333333] text-white">English</option>
-                      <option value="Japanese" className="bg-[#333333] text-white">日本語 (Japanese)</option>
-                    </select>
-                    <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none w-6 h-6 group-hover:text-white transition-colors" />
-                  </div>
+                {/* Voice Selection Section */}
+                <div className="space-y-8 pt-8 border-t border-slate-50">
+                   <div className="flex items-center justify-between">
+                     <label className="text-base font-bold text-slate-800 flex items-center space-x-2"><Volume2 className="w-5 h-5 text-indigo-600" /><span>{t('voiceGenTitle')}</span></label>
+                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('voiceGenSubtitle')}</p>
+                   </div>
+                   
+                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                     {OFFICIAL_VOICES.map((voice) => (
+                       <button key={voice.id} type="button" onClick={() => setSelectedVoice(voice)} className={`relative group flex flex-col items-center p-5 rounded-[32px] transition-all border-2 ${selectedVoice.id === voice.id ? 'bg-[#222222] border-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.2)]' : 'bg-[#333333]/90 border-transparent hover:border-slate-500'}`}>
+                         <div className={`w-14 h-14 rounded-full mb-3 flex items-center justify-center font-black text-lg transition-all ${selectedVoice.id === voice.id ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                           {voice.name[0]}
+                         </div>
+                         <div className="text-center">
+                           <div className={`text-xs font-bold ${selectedVoice.id === voice.id ? 'text-white' : 'text-slate-300'}`}>{voice.name}</div>
+                           <div className="flex flex-wrap justify-center gap-1 mt-1">
+                             {voice.tags.slice(0, 1).map(tag => <span key={tag} className="text-[8px] bg-white/5 text-slate-400 px-1 rounded-sm uppercase">{tag}</span>)}
+                           </div>
+                         </div>
+                         <button type="button" onClick={(e) => { e.stopPropagation(); handleTestVoice(voice.id); }} className={`absolute -top-1 -right-1 w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-md ${testingVoiceId === voice.id ? 'bg-indigo-500 text-white' : 'bg-white text-indigo-600 hover:scale-110'}`}>
+                           {testingVoiceId === voice.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+                         </button>
+                       </button>
+                     ))}
+                   </div>
+
+                   {/* Speech Parameters Controls */}
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10 p-8 bg-[#2A2A2A] rounded-[32px] border border-white/5">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center space-x-2">
+                            <Sliders className="w-3.5 h-3.5" />
+                            <span>{t('speakingRate')}</span>
+                          </label>
+                          <span className="text-indigo-400 font-black text-sm">{speakingRate.toFixed(1)}x</span>
+                        </div>
+                        <input type="range" min="0.5" max="2.0" step="0.1" value={speakingRate} onChange={(e) => setSpeakingRate(parseFloat(e.target.value))} className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                        <div className="flex justify-between text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                           <span>Slow</span><span>Normal</span><span>Fast</span>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center space-x-2">
+                            <Sliders className="w-3.5 h-3.5 rotate-90" />
+                            <span>{t('pitch')}</span>
+                          </label>
+                          <span className="text-indigo-400 font-black text-sm">{pitch > 0 ? '+' : ''}{pitch.toFixed(1)}</span>
+                        </div>
+                        <input type="range" min="-20" max="20" step="1" value={pitch} onChange={(e) => setPitch(parseFloat(e.target.value))} className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                        <div className="flex justify-between text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                           <span>Deep</span><span>Neutral</span><span>High</span>
+                        </div>
+                      </div>
+                   </div>
                 </div>
 
-                <button 
-                  type="submit"
-                  disabled={isGenerating || !topic}
-                  className="w-full py-6 bg-[#B4B4F8] text-white rounded-[32px] font-black text-2xl hover:bg-[#a0a0f0] transition-all disabled:opacity-50 flex items-center justify-center space-x-3 shadow-xl shadow-indigo-100 uppercase tracking-widest"
-                >
-                  {isGenerating ? (
-                    <><Loader2 className="w-7 h-7 animate-spin" /><span>{t('generating')}</span></>
-                  ) : (
-                    <><Plus className="w-7 h-7" /><span>{t('generateBtn')}</span></>
-                  )}
+                <button type="submit" disabled={isGenerating || !topic} className="w-full py-6 bg-[#B4B4F8] text-white rounded-[32px] font-black text-2xl hover:bg-[#a0a0f0] transition-all disabled:opacity-50 flex items-center justify-center space-x-3 shadow-xl shadow-indigo-100 uppercase tracking-widest">
+                  {isGenerating ? (<><Loader2 className="w-7 h-7 animate-spin" /><span>{t('generating')}</span></>) : (<><Plus className="w-7 h-7" /><span>{t('generateBtn')}</span></>)}
                 </button>
               </form>
 
-              {/* Template Modal */}
+              {/* Template & Assistant Modals (Same as before) */}
               {showTemplates && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
                   <div className="bg-white rounded-[40px] w-full max-w-xl p-8 shadow-2xl relative">
@@ -688,11 +685,7 @@ export default function App() {
                     <h3 className="text-2xl font-bold font-accent mb-6">{t('templates')}</h3>
                     <div className="grid gap-4 max-h-[60vh] overflow-y-auto pr-2">
                       {PROMPT_TEMPLATES[settings.language].map((tpl, i) => (
-                        <button
-                          key={i}
-                          onClick={() => { setTopic(tpl.topic); setShowTemplates(false); }}
-                          className="text-left p-6 rounded-[24px] border border-slate-100 bg-slate-50 hover:border-indigo-300 hover:bg-white transition-all group"
-                        >
+                        <button key={i} onClick={() => { setTopic(tpl.topic); setShowTemplates(false); }} className="text-left p-6 rounded-[24px] border border-slate-100 bg-slate-50 hover:border-indigo-300 transition-all group">
                           <div className="font-bold text-slate-800 mb-1 group-hover:text-indigo-600 text-lg">{tpl.title}</div>
                           <div className="text-sm text-slate-500 line-clamp-2">{tpl.topic}</div>
                         </button>
@@ -702,84 +695,29 @@ export default function App() {
                 </div>
               )}
 
-              {/* Voice Assistant Modal */}
               {showVoiceAssistant && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur-xl animate-in fade-in duration-500">
                   <div className="bg-white rounded-[40px] w-full max-w-2xl p-10 shadow-2xl relative overflow-hidden flex flex-col items-center text-center space-y-8">
-                    <button onClick={stopVoiceAssistant} className="absolute top-6 right-6 text-slate-300 hover:text-slate-500 transition-colors">
-                      <X className="w-8 h-8" />
-                    </button>
-                    
+                    <button onClick={stopVoiceAssistant} className="absolute top-6 right-6 text-slate-300 hover:text-slate-500 transition-colors"><X className="w-8 h-8" /></button>
                     <div className="space-y-3">
                       <div className="flex items-center justify-center space-x-3 mb-2">
-                        <div className="w-12 h-12 bg-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-200">
-                          <Mic className="text-white w-7 h-7" />
-                        </div>
+                        <div className="w-12 h-12 bg-violet-600 rounded-2xl flex items-center justify-center shadow-lg"><Mic className="text-white w-7 h-7" /></div>
                         <h3 className="text-3xl font-black font-accent tracking-tight">{t('vaTitle')}</h3>
                       </div>
                       <p className="text-slate-400 font-medium px-10">{t('vaSubtitle')}</p>
                     </div>
-
-                    {/* VA Visualization */}
-                    <div className="relative w-48 h-48 flex items-center justify-center">
+                    <div className="relative w-40 h-40 flex items-center justify-center">
                       <div className={`absolute inset-0 bg-violet-100 rounded-full animate-ping opacity-20 ${vaStatus === 'listening' ? 'block' : 'hidden'}`}></div>
-                      <div className={`absolute inset-4 bg-violet-200 rounded-full animate-pulse opacity-40 ${vaStatus === 'speaking' ? 'block' : 'hidden'}`}></div>
                       <div className="relative w-32 h-32 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-full shadow-2xl flex items-center justify-center">
-                        {vaStatus === 'connecting' ? <Loader2 className="w-10 h-10 text-white animate-spin" /> : 
-                         vaStatus === 'done' ? <Sparkles className="w-10 h-10 text-white" /> :
-                         vaStatus === 'error' ? <MicOff className="w-10 h-10 text-white" /> :
-                         <div className="flex items-end space-x-1 h-10">
-                           {[1, 2, 3, 4, 5].map(i => (
-                             <div key={i} className={`w-1.5 bg-white rounded-full ${vaStatus === 'listening' || vaStatus === 'speaking' ? 'animate-bounce' : 'h-2'}`} style={{ animationDelay: `${i * 0.1}s`, height: `${20 + Math.random() * 60}%` }}></div>
-                           ))}
-                         </div>
-                        }
+                        {vaStatus === 'connecting' ? <Loader2 className="w-10 h-10 text-white animate-spin" /> : <div className="flex items-end space-x-1 h-10">{[1, 2, 3, 4, 5].map(i => (<div key={i} className={`w-1.5 bg-white rounded-full ${vaStatus === 'listening' || vaStatus === 'speaking' ? 'animate-bounce' : 'h-2'}`} style={{ animationDelay: `${i * 0.1}s`, height: `${20 + Math.random() * 60}%` }}></div>))}</div>}
                       </div>
                     </div>
-
                     <div className="w-full space-y-6">
                       <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-100 min-h-[120px] max-h-[160px] overflow-y-auto text-left relative shadow-inner">
-                        <div className="flex items-center space-x-2 mb-3">
-                          <MessageSquare className="w-4 h-4 text-violet-400" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            {vaStatus === 'listening' ? t('vaListening') : vaStatus === 'speaking' ? t('vaSpeaking') : vaStatus === 'done' ? t('vaDone') : '...'}
-                          </span>
-                        </div>
-                        <p className="text-slate-700 font-serif italic text-lg leading-relaxed">
-                          {vaModelTurn || vaTranscription || (vaStatus === 'connecting' ? 'Connecting to assistant...' : 'Hello! I am your meditation guide. How are you feeling today?')}
-                        </p>
+                        <p className="text-slate-700 font-serif italic text-lg">{vaModelTurn || vaTranscription || 'Connecting...'}</p>
                       </div>
-
                       {vaStatus === 'done' && plannedTopic && (
-                        <div className="animate-in slide-in-from-top-4 duration-300">
-                          <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-[24px] text-left mb-6">
-                            <h4 className="font-black text-emerald-900 mb-2 flex items-center space-x-2">
-                              <Sparkles className="w-4 h-4" />
-                              <span>Planned Meditation</span>
-                            </h4>
-                            <p className="text-emerald-700 font-bold mb-1">{plannedTopic.topic}</p>
-                            <div className="flex space-x-3 text-xs text-emerald-600/70 font-black uppercase">
-                              <span>Style: {plannedTopic.style || 'Custom'}</span>
-                              <span>Duration: {plannedTopic.duration || 5}M</span>
-                            </div>
-                          </div>
-                          <button 
-                            onClick={usePlannedPlan}
-                            className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center space-x-2"
-                          >
-                            <Save className="w-5 h-5" />
-                            <span>{t('usePlan')}</span>
-                          </button>
-                        </div>
-                      )}
-                      
-                      {vaStatus === 'error' && (
-                        <button 
-                          onClick={startVoiceAssistant}
-                          className="w-full py-4 bg-rose-600 text-white rounded-2xl font-bold text-lg hover:bg-rose-700 transition-all flex items-center justify-center space-x-2"
-                        >
-                          <span>{t('vaError')}</span>
-                        </button>
+                        <button onClick={usePlannedPlan} className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg hover:bg-emerald-700 shadow-lg flex items-center justify-center space-x-2"><Save className="w-5 h-5" /><span>{t('usePlan')}</span></button>
                       )}
                     </div>
                   </div>
@@ -788,115 +726,76 @@ export default function App() {
             </div>
           )}
 
-          {/* History Tab */}
+          {/* History & Details (Same as before, updated with Speech Params in Detail synthesis) */}
           {(activeTab === 'history' || selectedGuideId) && !selectedGuideId && (
             <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
-              <div className="flex items-center justify-between">
+               <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold font-accent tracking-tight">{t('history')}</h2>
                 <div className="relative w-80">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                  <input 
-                    type="text" 
-                    placeholder={t('searchPlaceholder')}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 rounded-2xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium shadow-sm"
-                  />
+                  <input type="text" placeholder={t('searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-12 pr-4 py-3 rounded-2xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium shadow-sm" />
                 </div>
               </div>
-
-              {filteredGuides.length === 0 ? (
-                <div className="bg-white rounded-[40px] p-20 text-center border border-slate-100 shadow-sm">
-                  <div className="bg-slate-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <History className="text-slate-200 w-12 h-12" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredGuides.map((guide) => (
+                  <div key={guide.id} onClick={() => setSelectedGuideId(guide.id)} className="group bg-white rounded-[32px] p-8 border border-slate-100 flex flex-col cursor-pointer hover:border-indigo-200 hover:shadow-xl hover:-translate-y-1 transition-all">
+                    <div className="flex items-center justify-between mb-4"><div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 transition-colors"><Wind className="text-indigo-600 w-5 h-5 group-hover:text-white" /></div><Badge status={guide.status} /></div>
+                    <h4 className="font-black text-xl text-slate-900 line-clamp-2 mb-6 leading-tight">{guide.topic}</h4>
+                    <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between"><div className="flex items-center space-x-2 text-[11px] font-black uppercase text-slate-400"><Clock className="w-3.5 h-3.5" /><span>{guide.duration}M</span></div><div className="text-[11px] font-black text-indigo-400">{new Date(guide.createdAt).toLocaleDateString()}</div></div>
                   </div>
-                  <h3 className="text-xl font-bold text-slate-800">{t('noHistory')}</h3>
-                  <button onClick={() => setActiveTab('generate')} className="mt-8 px-10 py-3 bg-indigo-600 text-white rounded-full font-bold hover:bg-indigo-700 transition-all">
-                    {t('startGenerating')}
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredGuides.map((guide) => (
-                    <div 
-                      key={guide.id}
-                      onClick={() => setSelectedGuideId(guide.id)}
-                      className="group bg-white rounded-[32px] p-8 border border-slate-100 flex flex-col cursor-pointer hover:border-indigo-200 hover:shadow-xl hover:-translate-y-1 transition-all"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 transition-colors">
-                          <Wind className="text-indigo-600 w-5 h-5 group-hover:text-white" />
-                        </div>
-                        <Badge status={guide.status} />
-                      </div>
-                      <h4 className="font-black text-xl text-slate-900 line-clamp-2 mb-6 leading-tight">{guide.topic}</h4>
-                      <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
-                        <div className="flex items-center space-x-2 text-[11px] font-black uppercase text-slate-400">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>{guide.duration}M</span>
-                        </div>
-                        <div className="text-[11px] font-black text-indigo-400">{new Date(guide.createdAt).toLocaleDateString()}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Details View */}
           {selectedGuideId && selectedGuide && (
-            <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500">
-              <button onClick={() => setSelectedGuideId(null)} className="flex items-center space-x-3 text-slate-500 hover:text-indigo-600 mb-8 font-black uppercase tracking-widest text-xs">
-                <ArrowLeft className="w-4 h-4" /><span>{t('backToHistory')}</span>
-              </button>
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                <div className="lg:col-span-8 space-y-8">
-                  <div className="bg-white rounded-[40px] p-10 border border-slate-100 shadow-sm relative">
+            <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-right-4 duration-500 pb-20">
+              <button onClick={() => setSelectedGuideId(null)} className="flex items-center space-x-3 text-slate-500 hover:text-indigo-600 mb-8 font-black uppercase tracking-widest text-xs"><ArrowLeft className="w-4 h-4" /><span>{t('backToHistory')}</span></button>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div className="lg:col-span-7 space-y-6">
+                  <div className="bg-white rounded-[40px] p-10 border border-slate-100 shadow-sm">
                     <div className="flex items-start justify-between mb-8">
                       <div className="space-y-2">
-                        <h3 className="text-3xl font-black text-slate-900 tracking-tight">{selectedGuide.topic}</h3>
-                        <div className="flex items-center space-x-4">
-                          <span className="bg-indigo-600 text-white px-3 py-1 rounded-full uppercase font-black text-[10px] tracking-widest">
-                            {(translations[settings.language] as any).styles[selectedGuide.style]}
-                          </span>
-                          <span className="text-slate-400 font-bold text-sm">{selectedGuide.duration}M</span>
-                        </div>
+                        <h3 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">{selectedGuide.topic}</h3>
+                        <div className="flex items-center space-x-3"><span className="bg-indigo-600 text-white px-3 py-1 rounded-full uppercase font-black text-[9px] tracking-widest">{(translations[settings.language] as any).styles[selectedGuide.style]}</span><span className="text-slate-400 font-bold text-xs">{selectedGuide.duration} MINUTES</span></div>
                       </div>
-                      <button onClick={() => handleDelete(selectedGuide.id)} className="text-slate-300 hover:text-rose-500 p-3 rounded-2xl hover:bg-rose-50"><Trash2 className="w-6 h-6" /></button>
+                      <div className="flex space-x-2">
+                        <button onClick={() => startLiveSession(selectedGuide)} className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-all font-bold text-[10px] shadow-lg shadow-indigo-100 uppercase tracking-widest"><Waves className="w-4 h-4" /><span>{t('startLiveSession')}</span></button>
+                        <button onClick={() => handleDelete(selectedGuide.id)} className="text-slate-300 hover:text-rose-500 p-3 rounded-2xl hover:bg-rose-50 transition-colors"><Trash2 className="w-5 h-5" /></button>
+                      </div>
                     </div>
-                    <div className="prose prose-slate max-w-none whitespace-pre-wrap text-slate-700 leading-loose font-serif text-xl italic bg-slate-50 p-8 rounded-[32px] border border-slate-100 shadow-inner">
-                      {selectedGuide.content}
-                    </div>
+                    <div className="prose prose-slate max-w-none whitespace-pre-wrap text-slate-700 leading-relaxed font-serif text-xl italic bg-slate-50 p-8 rounded-[32px] border border-slate-100 shadow-inner max-h-[600px] overflow-y-auto">{selectedGuide.content}</div>
                   </div>
                 </div>
-                <div className="lg:col-span-4 space-y-8">
-                  <div className="bg-white rounded-[40px] p-8 border border-slate-100 shadow-sm sticky top-12">
-                    <h4 className="font-black text-lg text-slate-900 mb-4 flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center"><Volume2 className="w-4 h-4 text-white" /></div>
-                      <span>{t('voiceGenTitle')}</span>
-                    </h4>
-                    {selectedGuide.audios.length === 0 ? (
-                      <button onClick={() => handleSynthesize(selectedGuide)} disabled={isSynthesizing} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center space-x-3">
-                        {isSynthesizing ? <><Loader2 className="w-5 h-5 animate-spin" /><span>{t('synthesizing')}</span></> : <><Play className="w-5 h-5 fill-current" /><span>{t('convertToAudio')}</span></>}
-                      </button>
-                    ) : (
-                      <div className="space-y-6">
-                        {selectedGuide.audios.map((audio) => (
-                          <div key={audio.id} className="p-6 bg-slate-50 rounded-3xl border border-slate-200">
-                            <div className="flex items-center justify-between mb-4">
-                              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Speaker: {audio.voiceId}</span>
-                              <span className="text-[10px] font-black text-slate-400">{Math.round(audio.duration || 0)}S</span>
-                            </div>
-                            <audio src={audio.url} controls className="w-full h-10 mb-4" />
-                            <a href={audio.url} download={`${selectedGuide.topic}.wav`} className="w-full flex items-center justify-center space-x-2 text-xs font-black text-indigo-600 bg-white py-3 rounded-xl border border-indigo-100">
-                              <Download className="w-4 h-4" /><span>{t('downloadRecording')}</span>
-                            </a>
-                          </div>
+                <div className="lg:col-span-5 space-y-6 sticky top-12">
+                   {/* Sidebar synthesis tool (simplified copy of generation settings) */}
+                  <div className="bg-white rounded-[40px] p-8 border border-slate-100 shadow-sm space-y-8">
+                    <h4 className="font-black text-lg text-slate-900 flex items-center space-x-3"><div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center"><Volume2 className="w-4 h-4 text-white" /></div><span>{t('voiceGenTitle')}</span></h4>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 gap-2">
+                        {OFFICIAL_VOICES.map((voice) => (
+                          <button key={voice.id} type="button" onClick={() => setSelectedVoice(voice)} className={`flex items-center justify-between p-4 rounded-2xl border transition-all text-left ${selectedVoice.id === voice.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-slate-50 border-transparent hover:border-slate-200 text-slate-600'}`}>
+                            <div className="flex items-center space-x-3"><div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-[10px] ${selectedVoice.id === voice.id ? 'bg-white/20' : 'bg-slate-200'}`}>{voice.name[0]}</div><div className="font-bold text-sm">{voice.name}</div></div>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); handleTestVoice(voice.id); }} className={`p-2 rounded-lg ${selectedVoice.id === voice.id ? 'text-white hover:bg-white/10' : 'text-indigo-600 hover:bg-indigo-50'}`}>{testingVoiceId === voice.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}</button>
+                          </button>
                         ))}
-                        <button onClick={() => handleSynthesize(selectedGuide)} disabled={isSynthesizing} className="w-full py-3 text-indigo-600 hover:text-indigo-700 text-xs font-black flex items-center justify-center space-x-2 bg-indigo-50 rounded-xl">
-                          {isSynthesizing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}<span>{t('generateAnother')}</span>
-                        </button>
+                      </div>
+                      <div className="space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 mt-4">
+                         <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-400"><span>Speed: {speakingRate}x</span><span>Pitch: {pitch}</span></div>
+                         <input type="range" min="0.5" max="2.0" step="0.1" value={speakingRate} onChange={(e) => setSpeakingRate(parseFloat(e.target.value))} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                         <input type="range" min="-20" max="20" step="1" value={pitch} onChange={(e) => setPitch(parseFloat(e.target.value))} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                      </div>
+                    </div>
+                    <button onClick={() => handleSynthesize(selectedGuide)} disabled={isSynthesizing} className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:bg-indigo-700 transition-all flex items-center justify-center space-x-3 shadow-xl disabled:opacity-50">{isSynthesizing ? <><Loader2 className="w-5 h-5 animate-spin" /><span>{t('synthesizing')}</span></> : <><Music className="w-5 h-5" /><span>{t('convertToAudio')}</span></>}</button>
+                    {selectedGuide.audios.length > 0 && (
+                      <div className="space-y-4 pt-4 border-t border-slate-100">
+                         {selectedGuide.audios.map((audio) => (
+                           <div key={audio.id} className="p-5 bg-slate-50 rounded-3xl border border-slate-200 group">
+                             <div className="flex items-center justify-between mb-3"><span className="text-[9px] font-black text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full uppercase">Voice: {audio.voiceId}</span><span className="text-[9px] font-black text-slate-400 uppercase">{audio.params.speakingRate}x / {audio.params.pitch}P</span></div>
+                             <audio src={audio.url} controls className="w-full h-8 mb-4 custom-audio-player" />
+                             <a href={audio.url} download={`${selectedGuide.topic}.wav`} className="w-full flex items-center justify-center space-x-2 text-[10px] font-black text-indigo-600 bg-white py-2.5 rounded-xl border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all uppercase tracking-widest"><Download className="w-3.5 h-3.5" /><span>{t('downloadRecording')}</span></a>
+                           </div>
+                         ))}
                       </div>
                     )}
                   </div>
@@ -913,11 +812,11 @@ export default function App() {
                 <table className="w-full text-left min-w-[700px]">
                   <thead className="bg-slate-50 border-b border-slate-100">
                     <tr>
-                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('topicLabel')}</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Voice</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Length</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Created</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Action</th>
+                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('topicLabel')}</th>
+                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Voice</th>
+                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Settings</th>
+                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Created</th>
+                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -928,18 +827,32 @@ export default function App() {
                         <tr key={audio.id} className="hover:bg-indigo-50/30 transition-colors group">
                           <td className="px-8 py-6 font-bold text-slate-800">{guide.topic}</td>
                           <td className="px-8 py-6 text-sm font-semibold text-indigo-500">{audio.voiceId}</td>
-                          <td className="px-8 py-6 text-sm text-slate-400 font-bold">{Math.round(audio.duration || 0)}s</td>
+                          <td className="px-8 py-6 text-xs text-slate-400 font-bold">{audio.params.speakingRate}x / {audio.params.pitch}p</td>
                           <td className="px-8 py-6 text-xs text-slate-400 font-medium">{new Date(audio.createdAt).toLocaleDateString()}</td>
-                          <td className="px-8 py-6">
-                            <button onClick={() => { setSelectedGuideId(guide.id); setActiveTab('history'); }} className="bg-white px-4 py-2 rounded-xl text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white font-bold text-xs flex items-center space-x-2 transition-all shadow-sm">
-                              <Play className="w-3 h-3 fill-current" /><span>Listen</span>
-                            </button>
-                          </td>
+                          <td className="px-8 py-6"><button onClick={() => { setSelectedGuideId(guide.id); setActiveTab('history'); }} className="bg-white px-4 py-2 rounded-xl text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white font-bold text-xs flex items-center space-x-2 transition-all shadow-sm"><Play className="w-3 h-3 fill-current" /><span>Listen</span></button></td>
                         </tr>
                       ))
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* Real-time Meditation (Same as before) */}
+          {showLiveSession && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950 text-white animate-in fade-in duration-700">
+               <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-slate-950 to-purple-900/40 opacity-60"></div>
+              <div className="relative w-full max-w-4xl h-full flex flex-col items-center justify-center p-12 space-y-16">
+                <div className="text-center space-y-4"><h2 className="text-4xl font-black font-accent tracking-tight animate-pulse">{t('liveSessionTitle')}</h2><p className="text-indigo-300/80 font-medium text-lg">{t('liveSessionDesc')}</p></div>
+                <div className="relative flex items-center justify-center">
+                  <div className={`absolute w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl transition-all duration-1000 ${vaStatus === 'speaking' ? 'scale-125 opacity-40' : 'scale-100 opacity-20'}`}></div>
+                  <div className={`w-64 h-64 rounded-full border-4 border-indigo-500/30 flex items-center justify-center transition-all duration-[4000ms] ease-in-out ${vaStatus === 'speaking' ? 'scale-110 border-indigo-400' : 'scale-90 border-indigo-600/20'}`}>
+                    <div className="w-48 h-48 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 shadow-[0_0_50px_rgba(99,102,241,0.5)] flex items-center justify-center overflow-hidden"><Waves className={`w-20 h-20 text-white/50 transition-all duration-700 ${vaStatus === 'speaking' ? 'animate-pulse scale-110' : 'scale-90'}`} /></div>
+                  </div>
+                </div>
+                <div className="w-full max-w-2xl bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[40px] shadow-2xl relative overflow-hidden text-center"><p className="text-2xl font-serif italic text-white/90 leading-relaxed min-h-[60px]">{vaModelTurn || "..."}</p></div>
+                <button onClick={stopLiveSession} className="group flex flex-col items-center space-y-3"><div className="w-16 h-16 bg-white/5 border border-white/10 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-all duration-300"><X className="w-8 h-8 text-white" /></div><span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-rose-400 transition-colors">{t('endSession')}</span></button>
               </div>
             </div>
           )}

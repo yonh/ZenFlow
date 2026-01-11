@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Modality, Type, LiveServerMessage, Blob as GenAIBlob, FunctionDeclaration } from "@google/genai";
-import { MeditationStyle, GenerationParams } from "../types";
+import { MeditationStyle, GenerationParams, SpeechParams } from "../types";
 import { getSettings } from "./storageService";
 
 // Manual Base64 Implementation as per guidelines
@@ -87,7 +87,6 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
   function setUint32(data: number) { view.setUint32(pos, data, true); pos += 4; }
 }
 
-// Standard instance for REST calls (Text, TTS) which may use proxy
 const getStandardAIInstance = () => {
   const settings = getSettings();
   return new GoogleGenAI({ 
@@ -96,11 +95,9 @@ const getStandardAIInstance = () => {
   });
 };
 
-// Direct instance for Live API calls (WebSockets) which must bypass standard REST proxies
 const getLiveAIInstance = () => {
   return new GoogleGenAI({ 
     apiKey: process.env.API_KEY as string
-    // Bypassing baseUrl because most OpenAI proxies do not support Gemini Live WebSockets
   });
 };
 
@@ -137,7 +134,11 @@ export const generateMeditationText = async (params: GenerationParams) => {
   };
 };
 
-export const generateMeditationSpeech = async (text: string, voiceName: string = 'Kore'): Promise<{ blob: Blob; duration: number }> => {
+export const generateMeditationSpeech = async (
+  text: string, 
+  voiceName: string = 'Kore',
+  params?: SpeechParams
+): Promise<{ blob: Blob; duration: number }> => {
   const ai = getStandardAIInstance();
   const prompt = `Say in a calm, meditative voice: ${text.slice(0, 3000)}`;
 
@@ -150,6 +151,8 @@ export const generateMeditationSpeech = async (text: string, voiceName: string =
         voiceConfig: {
           prebuiltVoiceConfig: { voiceName },
         },
+        speakingRate: params?.speakingRate ?? 1.0,
+        pitch: params?.pitch ?? 0.0
       },
     },
   });
@@ -219,6 +222,46 @@ export const connectToLiveAssistant = (callbacks: {
       },
       systemInstruction: 'You are a ZenFlow Meditation Planner. Help the user define their meditation topic, style, and duration through a friendly conversation. Use a calm and soothing voice. When you have enough information to form a great meditation prompt, call the setMeditationTopic function to finalize the plan.',
       tools: [{ functionDeclarations: [setMeditationTopicFunction] }],
+      outputAudioTranscription: {},
+      inputAudioTranscription: {},
+    },
+  });
+};
+
+export const connectToLiveMeditation = (
+  script: string,
+  callbacks: {
+    onMessage: (message: LiveServerMessage) => void;
+    onOpen: () => void;
+    onClose: () => void;
+    onError: (e: any) => void;
+  }
+) => {
+  const ai = getLiveAIInstance();
+  return ai.live.connect({
+    model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+    callbacks: {
+      onopen: callbacks.onOpen,
+      onmessage: callbacks.onMessage,
+      onclose: (e: any) => callbacks.onClose(),
+      onerror: (e: any) => callbacks.onError(e),
+    },
+    config: {
+      responseModalities: [Modality.AUDIO],
+      speechConfig: {
+        voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
+      },
+      systemInstruction: `You are a professional meditation guide. Your tone should be slow and peaceful.
+      
+      BASE SCRIPT:
+      """
+      ${script}
+      """
+      
+      RULES:
+      1. Speak slowly with intentional pauses.
+      2. If the user interacts, gently guide them back to the meditation flow.
+      3. Your tone is warm and grounded.`,
       outputAudioTranscription: {},
       inputAudioTranscription: {},
     },
